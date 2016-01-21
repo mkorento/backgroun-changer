@@ -6,7 +6,6 @@ import ctypes
 import win32api
 import win32con
 import win32gui_struct
-import logging
 from win32process import DETACHED_PROCESS
 import subprocess
 
@@ -15,19 +14,11 @@ try:
 except ImportError:
     import win32gui
 
-logging.basicConfig(
-        filename = "\\".join(sys.argv[0].split('\\')[:-1]) + '\\client_log.txt',
-        level = logging.DEBUG,
-        filemode='w',
-        format = '%(levelname)-7.7s %(message)s'
-        )
-
 class Client(object):
     def __init__(self):
         self.current_dir = sys.argv[0]
         self.current_dir = "\\".join(self.current_dir.split('\\')[:-1])
         self.image_dir = self.current_dir + "\\images\\"
-        logging.debug('Client: current_dir: %s' % self.current_dir)
 
         # pitää muistaa aina lisätä yksi wallpaper
         self.wallpapers = os.listdir(self.image_dir)
@@ -39,7 +30,6 @@ class Client(object):
         f.close()
 
         if not os.path.exists(self.current_dir + '\\subreddits.txt'):
-            logging.error('subreddits.txt puuttuu')
             sys.exit(1)
 
         self.subprocess = None
@@ -47,26 +37,21 @@ class Client(object):
         self.start_subprocess()
 
     def start_subprocess(self, forced=False):
-        logging.debug("Kaynnistetaan subprocess, current_path: %s" % "\\".join(sys.argv[0].split('\\')[:-1]))
 
         if forced:
             self.subprocess = subprocess.Popen(['python.exe', "\\".join(sys.argv[0].split('\\')[:-1]) + '\\server.py', '--force'], creationflags=DETACHED_PROCESS|subprocess.CREATE_NEW_PROCESS_GROUP, close_fds=True)
         else:
             self.subprocess = subprocess.Popen(['python.exe', "\\".join(sys.argv[0].split('\\')[:-1]) + '\\server.py'], creationflags=DETACHED_PROCESS|subprocess.CREATE_NEW_PROCESS_GROUP, close_fds=True)
 
-        logging.debug("Subprocess kaynnistetty, handle %d" % self.subprocess._handle)
 
     def kill_subprocess(self, SysTrayIcon=None):
         # win32api.TerminateProcess(int(self.subprocess._handle), -1)
-        logging.debug("kill_subprocess")
         ctypes.windll.kernel32.TerminateProcess(int(self.subprocess._handle), -1)
-        logging.debug("subprocess tuhottu")
 
     def download_images(self, SysTrayIcon):
         if self.download_running():
             SysTrayIcon.icon = "icon_busy.ico"
             SysTrayIcon.refresh_icon()
-            logging.debug("Lataus jo kaynnissa")
             return
 
         self.kill_subprocess()
@@ -92,17 +77,13 @@ class Client(object):
         return self.wallpapers != os.listdir(self.image_dir)
 
     def next_background(self, SysTrayIcon):
-        logging.debug("next_background")
-        logging.debug("Taustakuvien lkm: %d" % len(self.wallpapers))
 
         if self.download_running():
             SysTrayIcon.icon = "icon_busy.ico"
             SysTrayIcon.refresh_icon()
-            logging.debug("Lataus kaynnissa")
             return
 
         if self.needing_update():
-            logging.debug("Paivitetaan taustakuvat")
 
             SysTrayIcon.icon = "icon_ready.ico"
             SysTrayIcon.refresh_icon()
@@ -110,12 +91,10 @@ class Client(object):
 
         if len(self.wallpapers) > 0:
             if len(self.current_wallpaper) == 0:
-                logging.debug("Asetetaan taustakuva, nykyinen tyhja")
 
                 self.set_background(self.wallpapers[0])
                 self.wallpaper_i = 0
             else:
-                logging.debug("Asetetaan taustakuva")
 
                 self.wallpaper_i += 1
                 if self.wallpaper_i == len(self.wallpapers):
@@ -123,28 +102,22 @@ class Client(object):
                 self.set_background(self.wallpapers[self.wallpaper_i])
 
     def previous_background(self, SysTrayIcon):
-        logging.debug("previous_background")
-        logging.debug("Taustakuvien lkm: %d" % len(self.wallpapers))
 
         if self.download_running():
             SysTrayIcon.icon = "icon_busy.ico"
             SysTrayIcon.refresh_icon()
-            logging.debug("Lataus kaynnissa")
             return
 
         if self.needing_update():
-            logging.debug("Paivitetaan taustakuvat")
             self.update_wallpapers()
             SysTrayIcon.icon = "icon_ready.ico"
             SysTrayIcon.refresh_icon()
 
         if len(self.wallpapers) > 0:
             if len(self.current_wallpaper) == 0:
-                logging.debug("Asetetaan taustakuva, nykyinen tyhja")
                 self.set_background(self.wallpapers[0])
                 self.wallpaper_i = 0
             else:
-                logging.debug("Asetetaan taustakuva")
                 self.wallpaper_i -= 1
                 if self.wallpaper_i < 0:
                     self.wallpaper_i = len(self.wallpapers)-1
@@ -360,7 +333,6 @@ def non_string_iterable(obj):
         return not isinstance(obj, basestring)
 
 if __name__ == '__main__':
-    logging.debug("Kaynnistetaan client")
 
     hover_text = "O_O"
     icon = "icon_ready.ico"

@@ -129,7 +129,6 @@ class Client(object):
         self.current_wallpaper = image
 
 class SysTrayIcon(object):
-    '''TODO'''
     QUIT = 'QUIT'
     SPECIAL_ACTIONS = [QUIT]
 

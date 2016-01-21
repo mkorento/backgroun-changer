@@ -89,8 +89,6 @@ class Server(object):
 
 if __name__ == '__main__':
 
-    # jotain väliltä 0-86399
-    # 16:00 = 60s*60m*16 = 57600s
     update_time = 57600
     server = Server()
 

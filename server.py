@@ -20,15 +20,15 @@ class Server(object):
 
     def download_images(self):
 
-        with open(self.current_dir + '\\last_completion.txt', 'r') as f:
+        with open(self.current_dir + '\\config\\last_completion.txt', 'r') as f:
             completion = f.read()
             if int(time.time())-int(completion) < 60:
                 return
 
-        with open(self.current_dir + '\\subreddits.txt', 'r') as f:
+        with open(self.current_dir + '\\config\\subreddits.txt', 'r') as f:
             self.pages = filter(None, f.read().strip().split('\n'))
 
-        f = open(self.current_dir + '\\running.txt', 'w')
+        f = open(self.current_dir + '\\config\\running.txt', 'w')
         f.write('True')
         f.close()
 
@@ -67,10 +67,10 @@ class Server(object):
             self.set_background()
 
 
-        with open(self.current_dir + '\\last_completion.txt', 'w') as f:
+        with open(self.current_dir + '\\config\\last_completion.txt', 'w') as f:
             f.write('%s' % int(time.time()))
 
-        f = open(self.current_dir + '\\running.txt', 'w')
+        f = open(self.current_dir + '\\config\\running.txt', 'w')
         f.write('False')
         f.close()
 
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     server = Server()
 
     try:
-        with open(server.current_dir + "\\aika.txt", 'r') as f:
+        with open(server.current_dir + "\\config\\update_time.txt", 'r') as f:
             user_update_time = int(f.read().strip())
 
             if user_update_time >= 0 and user_update_time < 86400:

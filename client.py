@@ -24,11 +24,11 @@ class Client(object):
         self.current_wallpaper = ''
         self.wallpaper_i = 0
 
-        f = open(self.current_dir + '\\running.txt', 'w')
+        f = open(self.current_dir + '\\config\\running.txt', 'w')
         f.write('False')
         f.close()
 
-        if not os.path.exists(self.current_dir + '\\subreddits.txt'):
+        if not os.path.exists(self.current_dir + '\\config\\subreddits.txt'):
             sys.exit(1)
 
         self.subprocess = None
@@ -49,13 +49,13 @@ class Client(object):
 
     def download_images(self, SysTrayIcon):
         if self.download_running():
-            SysTrayIcon.icon = "icon_busy.ico"
+            SysTrayIcon.icon = "icons\icon_busy.ico"
             SysTrayIcon.refresh_icon()
             return
 
         self.kill_subprocess()
         self.start_subprocess(True)
-        SysTrayIcon.icon = "icon_busy.ico"
+        SysTrayIcon.icon = "icons\icon_busy.ico"
         SysTrayIcon.refresh_icon()
 
     def update_wallpapers(self):
@@ -67,7 +67,7 @@ class Client(object):
             self.current_wallpaper = ''
 
     def download_running(self):
-        f = open(self.current_dir + '\\running.txt', 'r')
+        f = open(self.current_dir + '\\config\\running.txt', 'r')
         running = f.read()
         f.close()
         return running == 'True'
@@ -78,13 +78,13 @@ class Client(object):
     def next_background(self, SysTrayIcon):
 
         if self.download_running():
-            SysTrayIcon.icon = "icon_busy.ico"
+            SysTrayIcon.icon = "icons\icon_busy.ico"
             SysTrayIcon.refresh_icon()
             return
 
         if self.needing_update():
 
-            SysTrayIcon.icon = "icon_ready.ico"
+            SysTrayIcon.icon = "icons\icon_ready.ico"
             SysTrayIcon.refresh_icon()
             self.update_wallpapers()
 
@@ -103,13 +103,13 @@ class Client(object):
     def previous_background(self, SysTrayIcon):
 
         if self.download_running():
-            SysTrayIcon.icon = "icon_busy.ico"
+            SysTrayIcon.icon = "icons\icon_busy.ico"
             SysTrayIcon.refresh_icon()
             return
 
         if self.needing_update():
             self.update_wallpapers()
-            SysTrayIcon.icon = "icon_ready.ico"
+            SysTrayIcon.icon = "icons\icon_ready.ico"
             SysTrayIcon.refresh_icon()
 
         if len(self.wallpapers) > 0:
@@ -333,12 +333,12 @@ def non_string_iterable(obj):
 
 if __name__ == '__main__':
 
-    hover_text = "O_O"
-    icon = "icon_ready.ico"
+    hover_text = "Background changer"
+    icon = "icons\icon_ready.ico"
     client = Client()
 
-    menu_options = (('Seuraava', None, client.next_background),
-                    ('Edellinen', None, client.previous_background),
-                    ('Hae kuvat', None, client.download_images))
+    menu_options = (('Next', None, client.next_background),
+                    ('Previous', None, client.previous_background),
+                    ('Download images', None, client.download_images))
 
     SysTrayIcon(icon, hover_text, menu_options, on_quit=client.kill_subprocess, default_menu_index=1)

@@ -20,7 +20,6 @@ class Client(object):
         self.current_dir = "\\".join(self.current_dir.split('\\')[:-1])
         self.image_dir = self.current_dir + "\\images\\"
 
-        # pitää muistaa aina lisätä yksi wallpaper
         self.wallpapers = os.listdir(self.image_dir)
         self.current_wallpaper = ''
         self.wallpaper_i = 0

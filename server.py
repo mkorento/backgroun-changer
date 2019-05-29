@@ -43,6 +43,7 @@ class Server(object):
 
                 for i, val in enumerate(json_response['data']['children']):
                     url = val['data']['url']
+                    image_title = val['data']['title']
                     response = requests.get(url, headers=self.headers, stream=True)
                     file_type = response.headers['content-type'].split('/')[0]
 
@@ -51,7 +52,22 @@ class Server(object):
                     if response.status_code == 200 and file_type == "image":
                         file_extension = url.split('.')
                         file_extension = "." + file_extension[len(file_extension)-1]
-                        filename = os.urandom(16).encode('hex')
+
+                        # drop all kinds of unicode quotation marks
+                        filename = image_title.replace(u'\u2018',
+                                '').replace(u'\u2019','').replace(u'\u201c',
+                                        '').replace(u'\u201d',
+                                                '').replace(u'\u060c',
+                                                        '').replace(u'\u2032',
+                                                                '')
+
+                        # transform unicode characters into X's
+                        filename = ''.join([i if ord(i) < 127 and ord(i) > 31 else 'X' for i in filename])
+                        filename = filename.encode('ascii','ignore')
+
+                        filename = filename.replace(" ", "_")
+                        filename = filename.translate(None, '@!"#$%&\'()*,/:;<=>[\\]^`{|}~')
+                        filename = filename + "_" + os.urandom(1).encode('hex')
 
                         count += 1
                         try:
@@ -65,7 +81,7 @@ class Server(object):
             self.delete_old_wallpapers()
             self.update_wallpapers()
             self.set_background()
-
+            self.update_wallpaper_title_file()
 
         with open(self.current_dir + '\\config\\last_completion.txt', 'w') as f:
             f.write('%s' % int(time.time()))
@@ -76,6 +92,10 @@ class Server(object):
 
     def update_wallpapers(self):
         self.wallpapers = os.listdir(self.image_dir)
+
+    def update_wallpaper_title_file(self):
+        with open(self.current_dir + '\\config\\image_title.txt', 'w') as f:
+            f.write(self.wallpapers[0])
 
     def set_background(self):
         if len(self.wallpapers) > 0:

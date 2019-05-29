@@ -93,12 +93,16 @@ class Client(object):
 
                 self.set_background(self.wallpapers[0])
                 self.wallpaper_i = 0
+
+                self.update_wallpaper_title_file(self.wallpapers[0])
             else:
 
                 self.wallpaper_i += 1
                 if self.wallpaper_i == len(self.wallpapers):
                     self.wallpaper_i = 0
                 self.set_background(self.wallpapers[self.wallpaper_i])
+
+                self.update_wallpaper_title_file(self.wallpapers[self.wallpaper_i])
 
     def previous_background(self, SysTrayIcon):
 
@@ -116,17 +120,46 @@ class Client(object):
             if len(self.current_wallpaper) == 0:
                 self.set_background(self.wallpapers[0])
                 self.wallpaper_i = 0
+
+                self.update_wallpaper_title_file(self.wallpapers[0])
             else:
                 self.wallpaper_i -= 1
                 if self.wallpaper_i < 0:
                     self.wallpaper_i = len(self.wallpapers)-1
                 self.set_background(self.wallpapers[self.wallpaper_i])
 
+                self.update_wallpaper_title_file(self.wallpapers[self.wallpaper_i])
+
     def set_background(self, image):
         image_path = os.path.join(self.image_dir, image)
         SPI_SETDESKWALLPAPER = 20
         ctypes.windll.user32.SystemParametersInfoA(SPI_SETDESKWALLPAPER, 0, image_path, 3)
         self.current_wallpaper = image
+
+    def update_wallpaper_title_file(self, wallpaper_title):
+        with open(self.current_dir + '\\config\\image_title.txt', 'w') as f:
+            f.write(wallpaper_title)
+
+    def show_image_name(self, SysTrayIcon):
+        image_title = ''
+
+        if self.download_running():
+            image_title = 'Download running...'
+
+        else:
+            try:
+                f = open(self.current_dir + '\\config\\image_title.txt', 'r')
+                image_title = f.read()
+                f.close()
+            except IOError:
+                image_title = 'No image title file available. Try downloading \
+new wallpapers'
+
+        if not image_title:
+            image_title = 'No image title available. Try downloading new \
+wallpapers'
+
+        balloonTip.showWindow("", image_title)
 
 class SysTrayIcon(object):
     QUIT = 'QUIT'
@@ -322,6 +355,66 @@ class SysTrayIcon(object):
         else:
             menu_action(self)
 
+class WindowsBalloonTip:
+    def __init__(self):
+        self.notify_id_structure = None
+
+        message_map = {
+                win32con.WM_DESTROY: self.OnDestroy,
+        }
+
+        # Register the Window class.
+        wc = win32gui.WNDCLASS()
+        self.hinst = wc.hInstance = win32gui.GetModuleHandle(None)
+        wc.lpszClassName = "PythonTaskbar"
+        wc.lpfnWndProc = message_map # could also specify a wndproc.
+        self.classAtom = win32gui.RegisterClass(wc)
+
+    def showWindow(self, title, msg):
+
+        # Create the Window.
+        style = win32con.WS_OVERLAPPED | win32con.WS_SYSMENU
+
+        self.hwnd = win32gui.CreateWindow( self.classAtom, "Taskbar", style, \
+                0, 0, win32con.CW_USEDEFAULT, win32con.CW_USEDEFAULT, \
+                0, 0, self.hinst, None)
+
+        win32gui.UpdateWindow(self.hwnd)
+
+        iconPathName = os.path.abspath(os.path.join( sys.path[0], "balloontip.ico" ))
+        icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
+        try:
+            hicon = win32gui.LoadImage(hinst, iconPathName, \
+                    win32con.IMAGE_ICON, 0, 0, icon_flags)
+        except:
+            hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
+
+        flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
+        nid = (self.hwnd, 0, flags, win32con.WM_USER+20, hicon, "tooltip")
+
+        if self.notify_id_structure:
+            message = win32gui.NIM_MODIFY
+        else:
+            message = win32gui.NIM_ADD
+
+        self.notify_id_structure = (self.hwnd, 0, win32gui.NIF_INFO,
+                win32con.WM_USER+20, hicon, "Balloon  tooltip", msg, 200,
+                title)
+
+        win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
+        win32gui.Shell_NotifyIcon(win32gui.NIM_MODIFY, \
+                self.notify_id_structure)
+
+        win32gui.Shell_NotifyIcon(win32gui.NIM_DELETE, nid)
+        # win32gui.DestroyWindow(self.hwnd)
+
+    def OnDestroy(self, hwnd, msg, wparam, lparam):
+        win32gui.DestroyWindow(self.hwnd)
+
+        nid = (self.hwnd, 0)
+        win32gui.Shell_NotifyIcon(win32gui.NIM_DELETE, nid)
+        win32gui.PostQuitMessage(0) # Terminate the app.
+
 def non_string_iterable(obj):
     try:
         iter(obj)
@@ -334,9 +427,12 @@ if __name__ == '__main__':
 
     hover_text = "Background changer"
     icon = "icons\icon_ready.ico"
+    balloonTip = WindowsBalloonTip()
+
     client = Client()
 
-    menu_options = (('Next', None, client.next_background),
+    menu_options = (('Show image name', None, client.show_image_name),
+                    ('Next', None, client.next_background),
                     ('Previous', None, client.previous_background),
                     ('Download images', None, client.download_images))
 

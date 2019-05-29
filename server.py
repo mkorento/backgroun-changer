@@ -8,9 +8,11 @@ import os
 import ctypes
 import time
 import sys
+import logging
 
 class Server(object):
     def __init__(self):
+
         self.current_dir = os.path.dirname(os.path.realpath(__file__))
         self.image_dir = self.current_dir + "\\images\\"
         self.wallpapers = os.listdir(self.image_dir)
@@ -20,13 +22,19 @@ class Server(object):
 
     def download_images(self):
 
+        logging.debug('download_images')
+
         with open(self.current_dir + '\\config\\last_completion.txt', 'r') as f:
             completion = f.read()
             if int(time.time())-int(completion) < 60:
                 return
 
+        logging.debug('open subreddits.txt')
+
         with open(self.current_dir + '\\config\\subreddits.txt', 'r') as f:
             self.pages = filter(None, f.read().strip().split('\n'))
+
+        logging.debug(self.pages)
 
         f = open(self.current_dir + '\\config\\running.txt', 'w')
         f.write('True')
@@ -34,11 +42,18 @@ class Server(object):
 
         count = 0
 
+        logging.debug('for i in self.pages')
+
         for i in self.pages:
+            logging.debug('making new request')
+
             response = requests.get(i + '.json', headers=self.headers, stream=False)
             time.sleep(3)
 
             if response.status_code == 200:
+
+                logging.debug('response == 200')
+
                 json_response = response.json()
 
                 for i, val in enumerate(json_response['data']['children']):
@@ -50,8 +65,12 @@ class Server(object):
                     time.sleep(3)
 
                     if response.status_code == 200 and file_type == "image":
+                        logging.debug('response 200 == && image')
+
                         file_extension = url.split('.')
                         file_extension = "." + file_extension[len(file_extension)-1]
+
+                        logging.debug('drop quotations')
 
                         # drop all kinds of unicode quotation marks
                         filename = image_title.replace(u'\u2018',
@@ -61,9 +80,13 @@ class Server(object):
                                                         '').replace(u'\u2032',
                                                                 '')
 
+                        logging.debug('transform unicode')
+
                         # transform unicode characters into X's
                         filename = ''.join([i if ord(i) < 127 and ord(i) > 31 else 'X' for i in filename])
                         filename = filename.encode('ascii','ignore')
+
+                        logging.debug('replace ascii')
 
                         filename = filename.replace(" ", "_")
                         filename = filename.translate(None, '@!"#$%&\'()*,/:;<=>[\\]^`{|}~')
@@ -71,6 +94,7 @@ class Server(object):
 
                         count += 1
                         try:
+                            logging.debug('write image file')
                             with open(self.image_dir + filename + file_extension, 'wb') as f:
                                 for chunk in response:
                                     f.write(chunk)
@@ -78,9 +102,18 @@ class Server(object):
                             pass
 
         if count > 0:
+            logging.debug('count > 0')
+
+            logging.debug('delete_old_wallpaper')
             self.delete_old_wallpapers()
+
+            logging.debug('update_wallpapers')
             self.update_wallpapers()
+
+            logging.debug('set_background')
             self.set_background()
+
+            logging.debug('update_wallpaper_title')
             self.update_wallpaper_title_file()
 
         with open(self.current_dir + '\\config\\last_completion.txt', 'w') as f:
@@ -89,6 +122,8 @@ class Server(object):
         f = open(self.current_dir + '\\config\\running.txt', 'w')
         f.write('False')
         f.close()
+
+        logging.debug('complete!')
 
     def update_wallpapers(self):
         self.wallpapers = os.listdir(self.image_dir)
@@ -108,29 +143,36 @@ class Server(object):
             os.remove(self.image_dir + i)
 
 if __name__ == '__main__':
-
-    update_time = 57600
-    server = Server()
+    logging.basicConfig(filename=os.path.dirname(os.path.realpath(__file__)) +
+            '\\log.txt', level=logging.DEBUG)
 
     try:
-        with open(server.current_dir + "\\config\\update_time.txt", 'r') as f:
-            user_update_time = int(f.read().strip())
+        update_time = 57600
+        server = Server()
 
-            if user_update_time >= 0 and user_update_time < 86400:
-                update_time = user_update_time
-    except (IOError, ValueError) as e:
-        pass
+        try:
+            with open(server.current_dir + "\\config\\update_time.txt", 'r') as f:
+                user_update_time = int(f.read().strip())
 
-    if len(sys.argv) > 1 and sys.argv[1] == '--force':
-        server.download_images()
+                if user_update_time >= 0 and user_update_time < 86400:
+                    update_time = user_update_time
+        except (IOError, ValueError) as e:
+            pass
 
-    while 1:
-        now = datetime.now()
-        s_since_midn = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+        if len(sys.argv) > 1 and sys.argv[1] == '--force':
+            server.download_images()
 
-        if s_since_midn <= update_time:
-            time.sleep(update_time-s_since_midn)
-        else:
-            time.sleep(86400-(s_since_midn-update_time))
+        while 1:
+            now = datetime.now()
+            s_since_midn = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
 
-        server.download_images()
+            if s_since_midn <= update_time:
+                time.sleep(update_time-s_since_midn)
+            else:
+                time.sleep(86400-(s_since_midn-update_time))
+
+            server.download_images()
+
+    except Exception:
+        logging.exception('EXCEPTION')
+        raise

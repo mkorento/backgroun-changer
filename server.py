@@ -10,6 +10,8 @@ import time
 import sys
 import logging
 
+from logging.handlers import RotatingFileHandler
+
 class Server(object):
     def __init__(self):
 
@@ -22,19 +24,19 @@ class Server(object):
 
     def download_images(self):
 
-        logging.debug('download_images')
+        logger.debug('download_images')
 
         with open(self.current_dir + '\\config\\last_completion.txt', 'r') as f:
             completion = f.read()
             if int(time.time())-int(completion) < 60:
                 return
 
-        logging.debug('open subreddits.txt')
+        logger.debug('open subreddits.txt')
 
         with open(self.current_dir + '\\config\\subreddits.txt', 'r') as f:
             self.pages = filter(None, f.read().strip().split('\n'))
 
-        logging.debug(self.pages)
+        logger.debug(self.pages)
 
         f = open(self.current_dir + '\\config\\running.txt', 'w')
         f.write('True')
@@ -42,17 +44,17 @@ class Server(object):
 
         count = 0
 
-        logging.debug('for i in self.pages')
+        logger.debug('for i in self.pages')
 
         for i in self.pages:
-            logging.debug('making new request')
+            logger.debug('making new request')
 
             response = requests.get(i + '.json', headers=self.headers, stream=False)
             time.sleep(3)
 
             if response.status_code == 200:
 
-                logging.debug('response == 200')
+                logger.debug('response == 200')
 
                 json_response = response.json()
 
@@ -65,12 +67,12 @@ class Server(object):
                     time.sleep(3)
 
                     if response.status_code == 200 and file_type == "image":
-                        logging.debug('response 200 == && image')
+                        logger.debug('response 200 == && image')
 
                         file_extension = url.split('.')
                         file_extension = "." + file_extension[len(file_extension)-1]
 
-                        logging.debug('drop quotations')
+                        logger.debug('drop quotations')
 
                         # drop all kinds of unicode quotation marks
                         filename = image_title.replace(u'\u2018',
@@ -80,13 +82,13 @@ class Server(object):
                                                         '').replace(u'\u2032',
                                                                 '')
 
-                        logging.debug('transform unicode')
+                        logger.debug('transform unicode')
 
                         # transform unicode characters into X's
                         filename = ''.join([i if ord(i) < 127 and ord(i) > 31 else 'X' for i in filename])
                         filename = filename.encode('ascii','ignore')
 
-                        logging.debug('replace ascii')
+                        logger.debug('replace ascii')
 
                         filename = filename.replace(" ", "_")
                         filename = filename.translate(None, '@!"#$%&\'()*,/:;<=>[\\]^`{|}~')
@@ -94,7 +96,7 @@ class Server(object):
 
                         count += 1
                         try:
-                            logging.debug('write image file')
+                            logger.debug('write image file')
                             with open(self.image_dir + filename + file_extension, 'wb') as f:
                                 for chunk in response:
                                     f.write(chunk)
@@ -102,18 +104,18 @@ class Server(object):
                             pass
 
         if count > 0:
-            logging.debug('count > 0')
+            logger.debug('count > 0')
 
-            logging.debug('delete_old_wallpaper')
+            logger.debug('delete_old_wallpaper')
             self.delete_old_wallpapers()
 
-            logging.debug('update_wallpapers')
+            logger.debug('update_wallpapers')
             self.update_wallpapers()
 
-            logging.debug('set_background')
+            logger.debug('set_background')
             self.set_background()
 
-            logging.debug('update_wallpaper_title')
+            logger.debug('update_wallpaper_title')
             self.update_wallpaper_title_file()
 
         with open(self.current_dir + '\\config\\last_completion.txt', 'w') as f:
@@ -123,7 +125,7 @@ class Server(object):
         f.write('False')
         f.close()
 
-        logging.debug('complete!')
+        logger.debug('complete!')
 
     def update_wallpapers(self):
         self.wallpapers = os.listdir(self.image_dir)
@@ -143,8 +145,14 @@ class Server(object):
             os.remove(self.image_dir + i)
 
 if __name__ == '__main__':
-    logging.basicConfig(filename=os.path.dirname(os.path.realpath(__file__)) +
-            '\\log.txt', level=logging.DEBUG)
+    log_file = os.path.dirname(os.path.realpath(__file__)) + '\\log.txt'
+
+    logger = logging.getLogger("Rotating Log")
+    logger.setLevel(logging.DEBUG)
+
+    # add a rotating handler
+    handler = RotatingFileHandler(log_file, mode='a', maxBytes=1000000, backupCount=2)
+    logger.addHandler(handler)
 
     try:
         update_time = 57600
@@ -174,5 +182,5 @@ if __name__ == '__main__':
             server.download_images()
 
     except Exception:
-        logging.exception('EXCEPTION')
+        logger.exception('EXCEPTION')
         raise

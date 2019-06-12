@@ -10,7 +10,6 @@ import time
 import sys
 import logging
 import imagesize
-from decimal import Decimal
 
 from logging.handlers import RotatingFileHandler
 
@@ -25,19 +24,9 @@ class Server(object):
         self.headers = { 'User-Agent' : 'linux:mikan_desktop_app:0.0.1' }
         self.pages = []
 
-        self.ratios = []
-        self.lue_kuvasuhteet()
-
-    def lue_kuvasuhteet(self):
-
-        ratios = []
-        with open(self.current_dir + '\\config\\aspect_ratios.txt', 'r') as f:
-            ratios = filter(lambda x: not x.startswith('#'), f.readlines())
-            ratios = [x.strip('\n') for x in ratios]
-            ratios = [x.split(':') for x in ratios]
-            ratios = [Decimal(x[0]) / Decimal(x[1]) for x in ratios]
-
-        self.ratios = ratios
+        with open(self.current_dir + '\\config\\minimum_width.txt', 'r') as f:
+            tmp = filter(lambda x: not x.startswith('#'), f.readlines())
+            self.minimum_width = int([x.strip('\n') for x in tmp][0])
 
     def download_images(self):
 
@@ -122,13 +111,11 @@ class Server(object):
                                 for chunk in response:
                                     f.write(chunk)
 
-                            lev_kork_t = imagesize.get(self.image_dir + filename + file_extension)
-                            leveys_D = Decimal(lev_kork_t[0])
-                            korkeus_D = Decimal(lev_kork_t[1])
-                            kuvasuhde_D = leveys_D/korkeus_D
+                            leveys, korkeus = imagesize.get(self.image_dir + filename + file_extension)
 
-                            if not kuvasuhde_D in self.ratios:
+                            if not (leveys > korkeus and leveys >= self.minimum_width):
                                 logger.debug("remove image file (wrong aspect ratio): ")
+                                logger.debug("min_width: %d width: %d height: %d" % (self.minimum_width, leveys, korkeus))
                                 logger.debug(filename + file_extension)
 
                                 # rm file

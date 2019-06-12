@@ -1,0 +1,7 @@
+# Lines starting with '#' are comment lines and will be ignored.
+#
+# Give each aspect ratio in width:height -format on a separate line:
+# 4:3
+16:9
+# 16:10
+# 1.85:1

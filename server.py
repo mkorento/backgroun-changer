@@ -9,10 +9,13 @@ import ctypes
 import time
 import sys
 import logging
+import imagesize
+from decimal import Decimal
 
 from logging.handlers import RotatingFileHandler
 
 class Server(object):
+
     def __init__(self):
 
         self.current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -21,6 +24,20 @@ class Server(object):
 
         self.headers = { 'User-Agent' : 'linux:mikan_desktop_app:0.0.1' }
         self.pages = []
+
+        self.ratios = []
+        self.lue_kuvasuhteet()
+
+    def lue_kuvasuhteet(self):
+
+        ratios = []
+        with open(self.current_dir + '\\config\\aspect_ratios.txt', 'r') as f:
+            ratios = filter(lambda x: not x.startswith('#'), f.readlines())
+            ratios = [x.strip('\n') for x in ratios]
+            ratios = [x.split(':') for x in ratios]
+            ratios = [Decimal(x[0]) / Decimal(x[1]) for x in ratios]
+
+        self.ratios = ratios
 
     def download_images(self):
 
@@ -33,10 +50,14 @@ class Server(object):
 
         logger.debug('open subreddits.txt')
 
+        pages = []
         with open(self.current_dir + '\\config\\subreddits.txt', 'r') as f:
-            self.pages = filter(None, f.read().strip().split('\n'))
+            pages = filter(lambda x: not x.startswith('#'), f.readlines())
+            pages = [x.strip('\n') for x in pages]
 
-        logger.debug(self.pages)
+        self.pages = pages
+
+        logger.debug("subreddits: %s" % self.pages)
 
         f = open(self.current_dir + '\\config\\running.txt', 'w')
         f.write('True')
@@ -100,8 +121,24 @@ class Server(object):
                             with open(self.image_dir + filename + file_extension, 'wb') as f:
                                 for chunk in response:
                                     f.write(chunk)
+
+                            lev_kork_t = imagesize.get(self.image_dir + filename + file_extension)
+                            leveys_D = Decimal(lev_kork_t[0])
+                            korkeus_D = Decimal(lev_kork_t[1])
+                            kuvasuhde_D = leveys_D/korkeus_D
+
+                            if not kuvasuhde_D in self.ratios:
+                                logger.debug("remove image file (wrong aspect ratio): ")
+                                logger.debug(filename + file_extension)
+
+                                # rm file
+                                os.remove(self.image_dir + filename + file_extension)
+                                count -= 1
+
                         except IOError, e:
                             pass
+
+        logger.debug("Löytyi %d uutta taustakuvaa" % count)
 
         if count > 0:
             logger.debug('count > 0')
@@ -131,8 +168,9 @@ class Server(object):
         self.wallpapers = os.listdir(self.image_dir)
 
     def update_wallpaper_title_file(self):
-        with open(self.current_dir + '\\config\\image_title.txt', 'w') as f:
-            f.write(self.wallpapers[0])
+        if len(self.wallpapers) > 0:
+            with open(self.current_dir + '\\config\\image_title.txt', 'w') as f:
+                f.write(self.wallpapers[0])
 
     def set_background(self):
         if len(self.wallpapers) > 0:

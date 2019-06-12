@@ -10,6 +10,7 @@ Build and runtime dependencies:
         $ pip install pyinstaller
         $ pip install requests
         $ pip install pypiwin32
+        $ pip install imagesize
         $ .\build.ps1
 
 Start the program by running Start.py in dist/client/

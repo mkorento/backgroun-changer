@@ -1,1 +1,5 @@
+# Lines starting with '#' are comment lines and will be ignored.
+#
+# Give each subreddit to download wallpapers from on a separate line, in the
+# following address format:
 http://www.reddit.com/r/earthporn
